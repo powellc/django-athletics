@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.core.urlresolvers import reverse
@@ -61,12 +62,7 @@ class Organization(StandardMetadata)
 
        name, slug, website, description, admins."""
 
-    name=models.CharField(_('name'), max_length=100)
-    slug=models.SlugField(_('slug'), unique=True)
-    administrators=models.ManyToManyField(User, null=True, blank=True, related_name='')
-    description=models.TextField()
-    public=models.BooleanField(_('public'), default=False)
-    teams=models.ManyToManyField(Team, null=True, blank=True)
+
     objects=models.Manager()
     public_objects=PublicManager()
     
@@ -78,6 +74,17 @@ class School(Organization)
 
        Inherits from Organization, it represents a school, complete with mascots and everything."""
 
+    SCHOOL_TYPE_CHOICES = (
+        ('NA', _('Not a school')),
+        ('K8', _('K-8 School')),
+        ('HS', _('High School')),
+        ('UN', _('University')),
+    )
+
+    name=models.CharField(_('name'), max_length=100)
+    slug=models.SlugField(_('slug'), unique=True)
+    administrators=models.ManyToManyField(User, null=True, blank=True, related_name='')
+    description=models.TextField()
     mascot=models.CharField(_('mascot'), help_text="Please use the plural form of the mascot." )
     phone=PhoneNumberField(_('phone'), blank=True, null=True)
     website=models.URLField(_('website'), blank=True, null=True)
@@ -86,6 +93,8 @@ class School(Organization)
     state=USStateField(_('state'))
     zipcode=ZipCodeField(_('zip'), max_length=5)
     lat_long=models.CharField(_('coordinates'), max_length=255, blank=True)
+    school=models.CharField(_('school type'), default="NA", choices=SCHOOL_TYPE_CHOICES)
+    public=models.BooleanField(_('public'), default=False)
 
     objects=models.Manager()
     public_objects=PublicManager()
@@ -103,41 +112,14 @@ class School(Organization)
                 location = "%s +%s +%s" % (self.town, self.state, self.zipcode)
                 self.lat_long = get_lat_long(location)
         
-        super(School, self).save()    
+        super(Organization, self).save()    
 
     def __unicode__(self):
         return self.name
         
     def get_absolute_url(self):
         args=[self.slug]
-        return reverse('school_detail', args=args)
-
-class League(Organization)
-    """League model.
-
-       Inherits from Organization, it represents a league, such as a private soccer league, or a little league."""
-
-    phone=PhoneNumberField(_('phone'), blank=True, null=True)
-    website=models.URLField(_('website'), blank=True, null=True)
-    address=models.CharField(_('address'), max_length=255)
-    town=models.CharField(_('town'), max_length=100)
-    state=USStateField(_('state'))
-    zipcode=ZipCodeField(_('zip'), max_length=5)
-
-    objects=models.Manager()
-    public_objects=PublicManager()
-    
-    class Meta:
-        verbose_name = _('league')
-        verbose_name_plural = _('leagues')
-        get_latest_by='created'
-
-    def __unicode__(self):
-        return self.name
-        
-    def get_absolute_url(self):
-        args=[self.slug]
-        return reverse('league_detail', args=args)
+        return reverse('organization_detail', args=args)
 
 class Coach(StandardMetadata)
     firstname=models.CharField(_('first name'))
@@ -203,7 +185,10 @@ class Team(StandardMetadata):
         get_latest_by='created'
 
     def __unicode__(self):
-        return self.name
+        if year == datetime.now().year:
+            return self.name
+        else:
+            return u'%s %s' % (self.name
         
     def get_absolute_url(self):
         args=[self.slug]
