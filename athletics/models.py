@@ -65,30 +65,7 @@ class Sport(StandardMetadata):
     def __unicode__(self):
         return self.name
 
-class Organization(StandardMetadata):
-    name=models.CharField(_('name'), max_length=100)
-    slug=models.SlugField(_('slug'), unique=True)
-    administrators=models.ManyToManyField(User, null=True, blank=True, related_name='')
-    description=models.CharField(_('description'), max_length=255)
-    phone=PhoneNumberField(_('phone'), blank=True, null=True)
-    website=models.URLField(_('website'), blank=True, null=True)
-    address=models.CharField(_('address'), max_length=255)
-    town=models.ForeignKey(Town)    
-    public=models.BooleanField(_('public'), default=False)
-
-    objects=models.Manager()
-    public_objects=PublicManager()
-
-    class Meta:
-        verbose_name = _('organization')
-        verbose_name_plural = _('organizations')
-        get_latest_by='created'
-        
-    def __unicode__(self):
-        return self.name
-
-
-class School(Organization):
+class School(StandardMetadata):
     """School model.
        A meta model for Schools that contains basic info each school needs:
 
@@ -99,9 +76,21 @@ class School(Organization):
         ('HS', _('High School')),
         ('UN', _('University')),
     )
+    name=models.CharField(_('name'), max_length=100)
+    slug=models.SlugField(_('slug'), unique=True)
+    administrators=models.ManyToManyField(User, null=True, blank=True, related_name='')
+    description=models.CharField(_('description'), max_length=255)
+    phone=PhoneNumberField(_('phone'), blank=True, null=True)
+    website=models.URLField(_('website'), blank=True, null=True)
+    address=models.CharField(_('address'), max_length=255)
+    town=models.ForeignKey(Town)    
     mascot=models.CharField(_('mascot'), max_length=100, help_text="Please use the plural form of the mascot." )
     lat_long=models.CharField(_('coordinates'), max_length=255, blank=True)
     school_type=models.CharField(_('school type'), max_length=2, default="NA", choices=SCHOOL_TYPE_CHOICES)
+    public=models.BooleanField(_('public'), default=False)
+
+    objects=models.Manager()
+    public_objects=PublicManager()
     
     class Meta:
         verbose_name = _('school')
@@ -120,6 +109,9 @@ class School(Organization):
     def get_absolute_url(self):
         args=[self.slug]
         return reverse('school_detail', args=args)
+
+    def __unicode__(self):
+        return self.name
 
 class Coach(StandardMetadata):
     firstname=models.CharField(_('first name'), max_length=100)
@@ -185,11 +177,9 @@ class Team(StandardMetadata):
         ('M', _('Mixed')),        
     )
     
-    organization=models.ForeignKey(Organization)
+    school=models.ForeignKey(School)
     sport=models.ForeignKey(Sport)
-    sport_type=models.CharField(_('sport type'), default="NA", choices=SPORT_TYPE_CHOICES, max_length=2, help_text="Generally only for school teams.")
-    town=models.ForeignKey(Town, blank=True, null=True, help_text="Not used for school teams.")
-    mascot=models.CharField(_('mascot'), blank=True, max_length=100, help_text="If this is a school team, leave this blank and it will be filled by the school's mascot.")
+    sport_type=models.CharField(_('sport type'), default="NA", choices=SPORT_TYPE_CHOICES, max_length=2)
     gender=models.CharField(_('gender'), default="M", choices=GENDER_CHOICES, max_length=1)
     year=models.PositiveIntegerField(_('year'), max_length=4)
     coach=models.ForeignKey(Coach, related_name="coach")
@@ -208,29 +198,29 @@ class Team(StandardMetadata):
     def __unicode__(self):
         if self.year == datetime.now().year:
             if self.sport_type != "NA":
-                return u'%s %s %s' % (self.organization, self.get_sport_type_display(), self.sport)
+                return u'%s %s %s' % (self.school, self.get_sport_type_display(), self.sport)
             else:
-                return u'%s %s' % (self.organization, self.sport)
+                return u'%s %s' % (self.school, self.sport)
         else:
             if self.sport_type != "NA":
-                return u'%s %s %s %s' % (self.organization, self.get_sport_type_display(), self.sport, self.year)
+                return u'%s %s %s %s' % (self.school, self.get_sport_type_display(), self.sport, self.year)
             else:
-                return u'%s %s %s' % (self.organization, self.sport, self.year)
+                return u'%s %s %s' % (self.school, self.sport, self.year)
     
     def get_absolute_url(self):
         args=[self.slug]
         return reverse('team_detail', args=args)
         
-    def save(self):
-        if not self.mascot and self.organization.mascot:
-            self.mascot = self.organization.mascot
-        super(Team, self).save()        
+    #def save(self):
+    #    if not self.mascot and self.organization.mascot:
+    #        self.mascot = self.organization.mascot
+    #    super(Team, self).save()        
     
 
 class Location(StandardMetadata):
     name=models.CharField(_('name'), max_length=100)
     slug=models.SlugField(_('slug'), unique=True)
-    organization=models.ForeignKey(Organization, blank=True, null=True)
+    school=models.ForeignKey(School, blank=True, null=True)
     address=models.CharField(_('address'), max_length=255)
     town=models.ForeignKey(Town)
     lat_long=models.CharField(_('coordinates'), max_length=255, blank=True)
@@ -277,11 +267,16 @@ class Game(Event):
         args=[self.slug]
         return reverse('team_detail', args=args)
         
-    #def save(self):
-    #    title = "%s v %s - %s" % (self.home_team, self.away_team, self.start)
-    #    if not self.title or self.title != title:
-    #        title = "%s v %s - %s" % (self.home_team, self.away_team, self.start)
-    #        self.title=title
-    #    if not self.end or self.start:
-    #        self.end = self.start + timedelta(hours=1.5)
-    #    super(School, self).save()
+    def save(self):
+        title = "%s v %s - %s" % (self.home_team, self.away_team, self.start)
+        if not self.title or self.title != title:
+            title = "%s v %s - %s" % (self.home_team, self.away_team, self.start)
+            self.title=title
+        if not self.end:
+            self.end = self.start + timedelta(hours=1.5)
+        super(Game, self).save()
+
+#class Meet(Event):
+#    host_team=models.ForeignKey(Team, related_name="host_team")
+#    attending_teams=models.ManyToManyField(Team, related_name="attending_teams", blank=True, null=True) 
+    

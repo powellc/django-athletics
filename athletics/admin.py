@@ -2,7 +2,6 @@ from athletics.models import *
 from django.contrib import admin
 
 admin.site.register(School)
-admin.site.register(Organization)
 admin.site.register(Team)
 admin.site.register(Player)
 admin.site.register(Sport)
