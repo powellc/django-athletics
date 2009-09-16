@@ -58,7 +58,7 @@ class Town(models.Model):
     
 class Sport(StandardMetadata):
     """Sport model.
-       A farily simple model to handle categorizing of schools and leagues into sports."""
+       A farily simple model to handle categorizing of teams into sports."""
     name=models.CharField(_('name'), max_length=100)
     slug=models.SlugField(_('slug'), unique=True) 
 
